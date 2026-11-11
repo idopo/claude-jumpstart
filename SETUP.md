@@ -18,7 +18,7 @@ and nervous about it. Your job is to set up their workspace AND teach the habits
 
 ### How to run this session
 
-- Go **one step at a time**. At the start of each step say "Step N of 11: <name>". At the end, say what you did
+- Go **one step at a time**. At the start of each step say "Step N of 12: <name>". At the end, say what you did
   in one or two lines and wait for the person to say "next" (or ask a question) before moving on.
 - Teach while you do. Each step has a **Teach** line: say it in your own words, in at most three short sentences,
   in plain language. No jargon without a one-line explanation.
@@ -52,7 +52,7 @@ than 24, do not upgrade Node: say Ido will help with that one on one, and carry 
 Mac → the three commands in README.md, "Install". Do not try to fix installs yourself.
 
 Then point at the bottom of the screen: "That line is your status bar. It shows the model, the folder, and how
-full my context (my working memory) is. Keep an eye on it - Step 10 explains why."
+full my context (my working memory) is. Keep an eye on it - Step 11 explains why."
 
 ### Step 2 - What is in this repo
 
@@ -97,10 +97,39 @@ Teach: "Git takes snapshots of your project. With it, 'undo that' or 'go back to
 You never need git commands: say it in your own words and I tell you what I'm about to run."
 
 Run `git config --global user.name` and `git config --global user.email`. If either is empty, ask for name and
-email once and set them. Then explain `/commit` (comes in Step 6) and the phrases "undo that", "what did you
+email once and set them. Then explain `/commit` (comes in Step 7) and the phrases "undo that", "what did you
 change?", "go back to yesterday's version".
 
-### Step 5 - Skills and rules
+### Step 5 - GitHub (optional): a copy of your work off this computer
+
+Ask first (AskUserQuestion): "Do you want to connect your GitHub account? Then your projects can be backed up to
+GitHub. You can also skip this and do it later." Options: connect now / later / I don't use GitHub. On "later",
+tell them: "Any time, open me in the claude-jumpstart folder and say 'connect my GitHub'." Then move on.
+On "I don't use GitHub", say local git is enough for undo, and move on.
+
+Teach: "Git keeps snapshots on this computer. GitHub keeps a copy online, so a dead laptop is not a lost project.
+Pushing (uploading) only ever happens when you ask; I never push or create anything on GitHub by myself."
+
+If they connect:
+1. **Install the GitHub CLI (`gh`)** if `gh --version` fails. Windows: `winget install --id GitHub.cli -e
+   --accept-package-agreements --accept-source-agreements` (warn first: Windows may ask "allow this app to make
+   changes?" - click Yes). Mac: `brew install gh`. My session does not see newly installed programs on PATH, so on
+   Windows call it by full path afterwards: `C:\Program Files\GitHub CLI\gh.exe` (check it exists).
+2. **Log in, in a separate window** - the login is interactive and cannot run inside this chat. Tell them exactly
+   what will happen, then open it:
+   - Windows: `Start-Process powershell -ArgumentList '-NoExit','-Command',"& 'C:\Program Files\GitHub CLI\gh.exe' auth login --web --hostname github.com --git-protocol https"`
+     (with the PowerShell tool, or wrapped in `powershell.exe -NoProfile -Command "..."` from Bash).
+   - Mac: `osascript -e 'tell application "Terminal" to do script "gh auth login --web --hostname github.com --git-protocol https"'`
+   What they will see: a question "Authenticate Git with your GitHub credentials?" (press Enter for Yes), then a
+   one-time code like `ABCD-1234` and "Press Enter to open github.com". They press Enter, sign in to GitHub in the
+   browser, paste the code, click **Authorize**, then close that window and come back here and say "done".
+3. **Check:** run `gh auth status` (full path on Windows) and `gh auth setup-git`, so git uses this login when
+   pushing. Report the GitHub username it shows. If it failed, offer to try once more, otherwise skip:
+   "Ido can do this with you one on one."
+4. **Raw data stays off GitHub.** Explain in one line: GitHub is for code, notes and small results, not raw
+   recordings or videos (size, and some data must not leave the lab). Step 10 sets this up per project.
+
+### Step 6 - Skills and rules
 
 Teach: "A skill is a recipe I follow when you type its name. A rule is a standing instruction I follow always."
 
@@ -110,9 +139,9 @@ Teach: "A skill is a recipe I follow when you type its name. A rule is a standin
 - Ask whether they make Weizmann-branded decks; only on yes, install `skills/wis-slides/` to
   `~/.claude/skills/wis-slides/` and tell them the template file comes from Ido.
 
-Skills appear after a restart of Claude; say so, and that Step 11 tells them how.
+Skills appear after a restart of Claude; say so, and that Step 12 tells them how.
 
-### Step 6 - The official git commands plugin
+### Step 7 - The official git commands plugin
 
 Run `claude plugin list`. If `commit-commands` is installed, say so and skip. Otherwise, explain in one line that
 it adds `/commit`, `/commit-push-pr` and `/clean_gone` from Anthropic's official plugins, ask, and on yes ask them
@@ -121,7 +150,7 @@ to type this into the chat box:
 /plugin install commit-commands@claude-plugins-official
 ```
 
-### Step 7 - Hooks: rules that always fire
+### Step 8 - Hooks: rules that always fire
 
 Teach: "CLAUDE.md asks me to behave; I can forget. A hook is a small command Claude Code runs at a fixed moment,
 every single time. It is how you make a rule certain."
@@ -144,14 +173,14 @@ only after yes. After writing, Read the file back and check it is valid JSON.
    where `<HOOK>` is the full path of the copied file with forward slashes (e.g.
    `C:/Users/dana/.claude/hooks/protect-folders.js`; no `~` or `$HOME`), and the folder names use forward
    slashes, quoted if they contain spaces. Then test it: ask me to create a file inside one protected folder and
-   show that the hook blocks it (the test only works after a restart, so offer it at Step 11 instead if needed). Explain: reading is always allowed;
+   show that the hook blocks it (the test only works after a restart, so offer it at Step 12 instead if needed). Explain: reading is always allowed;
    writing, moving or deleting inside those folders is blocked, and I'm told to write results elsewhere.
    It is a seatbelt against accidents, not a lock - backups still matter.
 
 Tell them: "Hooks load when Claude restarts. Type /hooks any time to see what is installed. Want another one
 later? Just describe it to me: 'write a hook that ...'."
 
-### Step 8 - Your global CLAUDE.md
+### Step 9 - Your global CLAUDE.md
 
 Fill `templates/CLAUDE.global.md` with the Step 3 answers: name/role, research, data, tools, coding comfort,
 how to explain, language, and the "Never" list (question 8, plus "never change files in <raw folders>" if any).
@@ -159,7 +188,7 @@ If `~/.claude/CLAUDE.md` exists, propose a merged version (existing lines kept, 
 write `~/.claude/CLAUDE.md` only after yes. Teach: "Keep it short. Every line costs me attention every session.
 When I get something wrong twice, add one line here."
 
-### Step 9 - A CLAUDE.md for one real project
+### Step 10 - A CLAUDE.md for one real project
 
 Ask for the path of one project folder they actually work in (tip on Windows: in Explorer, Shift+right-click
 the folder → "Copy as path", then paste). Read its top-level listing and README if any. Draft a project
@@ -168,8 +197,12 @@ questions in `templates/CLAUDE.project.CHECKLIST.md`, and add a "Do not" block f
 `templates/rules/keep-the-science-yours.md`. Show it, write `<project>/CLAUDE.md` only after yes. If one exists,
 propose additions instead. Ask whether the project is already a git folder; if not, offer to run `git init` there
 and make a first commit, explaining it is the undo button from Step 4.
+Before that first commit, add a `.gitignore` that excludes their raw-data folders (Step 3, question 7) and large
+data files (videos, recordings), and show it. If GitHub was connected in Step 5, ask whether to back this project
+up to a NEW **private** GitHub repository; only on yes, run `gh repo create <name> --private --source . --push`
+and show them the link. Never make a repository public.
 
-### Step 10 - How to work with me day to day (the talk in two minutes)
+### Step 11 - How to work with me day to day (the talk in two minutes)
 
 Teach these, one short paragraph each, and pause for questions after the list:
 1. **Open me where you work.** Windows: right-click your project folder → "Open Claude here" (Windows 11:
@@ -189,7 +222,7 @@ Teach these, one short paragraph each, and pause for questions after the list:
    `/gsd-quick` for small things. Details: `docs/GSD_GUIDE.md`.
 8. **Never paste passwords, tokens or keys** into a session.
 
-### Step 11 - Finish
+### Step 12 - Finish
 
 1. List every file you wrote or changed, and which optional items were skipped.
 2. Cheat sheet: Esc stop · Shift+Tab plan mode · `/rewind` go back · `/clear` fresh start · `/context` see memory

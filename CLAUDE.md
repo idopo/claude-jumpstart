@@ -4,6 +4,7 @@ This folder is the lab's Claude Code starter kit from Ido's "Claude Jumpstart" t
 The person here is a lab member, probably new to the terminal.
 
 - If they are setting up, or say "setup", "start", or "walk me through it": read `SETUP.md` and follow it.
+- If they say "connect my GitHub" (or anything like it): do Step 5 of `SETUP.md` only.
 - Treat this folder as read-only. Copy files out of it into `~/.claude/` as SETUP.md says; do not edit the kit
   itself (that keeps `git pull` updates working).
 - Their own work belongs in their own project folder, not here.
