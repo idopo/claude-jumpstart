@@ -71,11 +71,12 @@ function Invoke-Native([scriptblock]$Command) {
 # pipe, which is what Invoke-Native does. Silent installers look frozen, so every 15 s it prints how
 # long it has been running and, if given a folder, how many MB have been downloaded into it.
 # Reading .Handle before waiting works around PowerShell 5.1 losing the ExitCode of -NoNewWindow processes.
-function Invoke-InConsole([string]$FilePath, [string]$Arguments, [string]$WatchFolder = '') {
+function Invoke-InConsole([string]$FilePath, [string]$Arguments, [string]$WatchFolder = '', [switch]$NoHeartbeat) {
   $process = Start-Process -FilePath $FilePath -ArgumentList $Arguments -NoNewWindow -PassThru
   $null = $process.Handle
   $started = Get-Date
   while (-not $process.WaitForExit(15000)) {
+    if ($NoHeartbeat) { continue }
     $elapsed = (Get-Date) - $started
     $line = "    ... still working ({0}m {1:00}s)" -f [int][math]::Floor($elapsed.TotalMinutes), $elapsed.Seconds
     if ($WatchFolder -and (Test-Path $WatchFolder)) {
@@ -86,6 +87,46 @@ function Invoke-InConsole([string]$FilePath, [string]$Arguments, [string]$WatchF
     Write-Host $line -ForegroundColor DarkGray
   }
   return $process.ExitCode
+}
+
+# Anthropic's native install, step by step, with what install.ps1 hides made visible: the same official
+# URLs, the same SHA-256 check against the release manifest, the same `claude.exe install`. curl.exe
+# via Get-File (built into Windows 10 1803+) shows bytes and speed, retries, and gives up when the speed stays under
+# 20 KB/s for 60 s, so a blocked download fails with a message instead of waiting forever at 0 bytes.
+# Returns $true when claude.exe install succeeded.
+function Install-ClaudeNative([string]$DownloadDir) {
+  $base     = 'https://downloads.claude.ai/claude-code-releases'
+  $platform = if ($env:PROCESSOR_ARCHITECTURE -eq 'ARM64') { 'win32-arm64' } else { 'win32-x64' }
+  try {
+    $version  = ([string](Invoke-RestMethod -Uri "$base/latest" -UseBasicParsing)).Trim()
+    if ($version -notmatch '^\d+\.\d+\.\d+') { Write-Warn "downloads.claude.ai returned no version number"; return $false }
+    $manifest = Invoke-RestMethod -Uri "$base/$version/manifest.json" -UseBasicParsing
+    $expected = [string]$manifest.platforms.$platform.checksum
+    if (-not $expected) { Write-Warn "no $platform build listed for Claude Code $version"; return $false }
+  } catch { Write-Warn "could not reach downloads.claude.ai: $($_.Exception.Message)"; return $false }
+
+  New-Item -ItemType Directory -Force -Path $DownloadDir | Out-Null
+  $exe = Join-Path $DownloadDir "claude-$version-$platform.exe"
+  Write-Host "    downloading Claude Code $version (about 330 MB; the line below shows % done and speed)"
+  try { Get-File "$base/$version/$platform/claude.exe" $exe }
+  catch {
+    Write-Warn "$($_.Exception.Message). A network filter or antivirus may be blocking .exe downloads."
+    Remove-Item -Force $exe -ErrorAction SilentlyContinue
+    return $false
+  }
+  $actual = (Get-FileHash -Path $exe -Algorithm SHA256).Hash.ToLower()
+  if ($actual -ne $expected.ToLower()) {
+    Write-Warn "downloaded file failed the checksum check (corrupted, or replaced by a filter page) - not running it"
+    Remove-Item -Force $exe -ErrorAction SilentlyContinue
+    return $false
+  }
+  Write-Ok "downloaded and checksum verified"
+  Write-Host "    setting up Claude Code (claude.exe install)"
+  $code = Invoke-InConsole $exe 'install'
+  Start-Sleep -Seconds 1   # let claude.exe release the file before deleting it, as install.ps1 does
+  Remove-Item -Force $exe -ErrorAction SilentlyContinue
+  if ($code -ne 0) { Write-Warn "claude.exe install exited with code $code"; return $false }
+  return $true
 }
 
 # Output lines of a native program (or none on failure); never throws.
@@ -130,9 +171,16 @@ function Add-ToUserPath([string]$Dir) {
   if (($env:Path -split ';') -notcontains $Dir) { $env:Path = "$env:Path;$Dir" }
 }
 
+# PowerShell 5.1's Invoke-WebRequest writes nothing until the whole file has arrived and is very slow
+# on large files (a 330 MB download sat at 0 bytes on a lab PC), so curl.exe is used whenever it exists.
 function Get-File([string]$Url, [string]$OutFile) {
   Write-Host "    downloading $Url"
-  Invoke-WebRequest -Uri $Url -OutFile $OutFile -UseBasicParsing
+  if (Test-Command 'curl.exe') {
+    $code = Invoke-InConsole 'curl.exe' "-fL --retry 3 --retry-delay 5 --connect-timeout 30 --speed-limit 20000 --speed-time 60 -o `"$OutFile`" $Url" -NoHeartbeat
+    if ($code -ne 0) { throw "Download failed or stalled (curl exit code $code): $Url" }
+  } else {
+    Invoke-WebRequest -Uri $Url -OutFile $OutFile -UseBasicParsing
+  }
   if (-not (Test-Path $OutFile) -or (Get-Item $OutFile).Length -lt 1024) { throw "Download failed or file is empty: $OutFile" }
 }
 
@@ -299,11 +347,16 @@ $claudeBin = Join-Path $env:USERPROFILE '.local\bin'
 if (Test-Command 'claude') {
   Write-Skip "claude already installed: $(Get-ToolVersion 'claude')"
 } else {
-  # Own PowerShell process: install.ps1 calls `exit 1` on failure, which would end THIS script if it
-  # ran here through Invoke-Expression, and the fallbacks below would never be reached.
-  Write-Host "    running Anthropic's installer (irm https://claude.ai/install.ps1 | iex) - a progress line appears every 15 seconds"
-  $exitCode = Invoke-InConsole 'powershell.exe' '-NoProfile -ExecutionPolicy Bypass -Command "irm https://claude.ai/install.ps1 | iex"' (Join-Path $claudeHome 'downloads')
-  if ($exitCode -ne 0) { Write-Warn "Anthropic's installer exited with code $exitCode, trying the alternatives" }
+  $downloads = Join-Path $claudeHome 'downloads'
+  if (Test-Command 'curl.exe') {
+    if (-not (Install-ClaudeNative $downloads)) { Write-Warn "native install did not finish - trying winget, then npm" }
+  } else {
+    # No curl.exe (Windows 10 before 1803): Anthropic's own script, in its own process because it calls
+    # `exit 1` on failure, which would end THIS script if run here through Invoke-Expression.
+    Write-Host "    running Anthropic's installer (irm https://claude.ai/install.ps1 | iex)"
+    $exitCode = Invoke-InConsole 'powershell.exe' '-NoProfile -ExecutionPolicy Bypass -Command "irm https://claude.ai/install.ps1 | iex"' $downloads
+    if ($exitCode -ne 0) { Write-Warn "Anthropic's installer exited with code $exitCode - trying winget, then npm" }
+  }
   Update-SessionPath
   if (-not (Test-Command 'claude') -and (Test-Path (Join-Path $claudeBin 'claude.exe'))) { Add-ToUserPath $claudeBin }
   if (-not (Test-Command 'claude') -and (Test-Winget)) { $null = Install-WithWinget 'Anthropic.ClaudeCode'; Update-SessionPath }
