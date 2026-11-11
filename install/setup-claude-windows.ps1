@@ -437,21 +437,8 @@ Write-Ok "right-click a folder -> 'Open Claude here' (Windows 11: under 'Show mo
 # ---------------------------------------------------------------------------
 Write-Step "Your copy of claude-jumpstart"
 
-function Select-KitParentFolder {
-  $default = $env:USERPROFILE
-  try {
-    Add-Type -AssemblyName System.Windows.Forms
-    $owner  = New-Object System.Windows.Forms.Form -Property @{ TopMost = $true }  # keeps the dialog in front
-    $dialog = New-Object System.Windows.Forms.FolderBrowserDialog
-    $dialog.Description  = "Choose where to put your claude-jumpstart folder (Cancel = $default)"
-    $dialog.SelectedPath = $default
-    if ($dialog.ShowDialog($owner) -eq [System.Windows.Forms.DialogResult]::OK) { return $dialog.SelectedPath }
-  } catch { Write-Warn "folder picker unavailable, using $default" }
-  return $default
-}
-
 $zipFolder = Split-Path -Parent $PSScriptRoot   # this installer lives in <kit>\install
-$kitDir    = Join-Path (Select-KitParentFolder) 'claude-jumpstart'
+$kitDir    = Join-Path $env:USERPROFILE 'claude-jumpstart'   # fixed home, no question asked
 if (Test-Path (Join-Path $kitDir '.git')) {
   Write-Host "    already there, updating: $kitDir"
   if ((Invoke-Native { & git -C $kitDir pull --ff-only }) -ne 0) { Write-Warn "could not update $kitDir (local changes?) - using it as it is" }

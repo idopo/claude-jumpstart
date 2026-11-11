@@ -13,7 +13,8 @@ customises Claude for you, a few skills and rules, and a guide to the GSD planni
    - "Allow this app to make changes?" Click **Yes**.
    It installs Git for Windows, Node 24+, Claude Code and GSD Core 1.19.0 (which brings the context bar and
    context monitor), saves everything on your PATH, and adds **"Open Claude here"** to the right-click menu
-   of every folder. It asks where to keep your own copy of this kit (a git clone, so it can be updated)
+   of every folder. It keeps your own copy of this kit in `C:\Users\<you>\claude-jumpstart` (a git clone, so re-running
+   the installer updates it)
    and puts a **"Claude setup"** shortcut on your desktop. Safe to re-run, and it never replaces anything you
    already have (an existing Node, GSD, Claude settings, PATH or execution policy is left as it is). 5-10 minutes.
    After that the downloaded ZIP can be deleted.
