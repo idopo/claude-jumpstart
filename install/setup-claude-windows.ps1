@@ -68,12 +68,23 @@ function Invoke-Native([scriptblock]$Command) {
 
 # Runs an installer attached directly to this console window and returns its exit code. Interactive
 # installers (claude.exe install, GSD's npx installer) can wait forever when their output goes into a
-# pipe, which is what Invoke-Native does. Reading .Handle before waiting works around PowerShell 5.1
-# returning an empty ExitCode for -NoNewWindow processes.
-function Invoke-InConsole([string]$FilePath, [string]$Arguments) {
+# pipe, which is what Invoke-Native does. Silent installers look frozen, so every 15 s it prints how
+# long it has been running and, if given a folder, how many MB have been downloaded into it.
+# Reading .Handle before waiting works around PowerShell 5.1 losing the ExitCode of -NoNewWindow processes.
+function Invoke-InConsole([string]$FilePath, [string]$Arguments, [string]$WatchFolder = '') {
   $process = Start-Process -FilePath $FilePath -ArgumentList $Arguments -NoNewWindow -PassThru
   $null = $process.Handle
-  $process.WaitForExit()
+  $started = Get-Date
+  while (-not $process.WaitForExit(15000)) {
+    $elapsed = (Get-Date) - $started
+    $line = "    ... still working ({0}m {1:00}s)" -f [int][math]::Floor($elapsed.TotalMinutes), $elapsed.Seconds
+    if ($WatchFolder -and (Test-Path $WatchFolder)) {
+      $bytes = (Get-ChildItem $WatchFolder -File -ErrorAction SilentlyContinue | Measure-Object Length -Sum).Sum
+      if ($bytes) { $line += ", downloaded {0:N0} MB" -f ($bytes / 1MB) }
+    }
+    if ($elapsed.TotalMinutes -ge 15) { $line += " - if this number stops changing, send Ido a screenshot" }
+    Write-Host $line -ForegroundColor DarkGray
+  }
   return $process.ExitCode
 }
 
@@ -290,8 +301,8 @@ if (Test-Command 'claude') {
 } else {
   # Own PowerShell process: install.ps1 calls `exit 1` on failure, which would end THIS script if it
   # ran here through Invoke-Expression, and the fallbacks below would never be reached.
-  Write-Host "    running Anthropic's installer (irm https://claude.ai/install.ps1 | iex) - no progress output, be patient"
-  $exitCode = Invoke-InConsole 'powershell.exe' '-NoProfile -ExecutionPolicy Bypass -Command "irm https://claude.ai/install.ps1 | iex"'
+  Write-Host "    running Anthropic's installer (irm https://claude.ai/install.ps1 | iex) - a progress line appears every 15 seconds"
+  $exitCode = Invoke-InConsole 'powershell.exe' '-NoProfile -ExecutionPolicy Bypass -Command "irm https://claude.ai/install.ps1 | iex"' (Join-Path $claudeHome 'downloads')
   if ($exitCode -ne 0) { Write-Warn "Anthropic's installer exited with code $exitCode, trying the alternatives" }
   Update-SessionPath
   if (-not (Test-Command 'claude') -and (Test-Path (Join-Path $claudeBin 'claude.exe'))) { Add-ToUserPath $claudeBin }
