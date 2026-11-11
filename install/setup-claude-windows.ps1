@@ -66,6 +66,17 @@ function Invoke-Native([scriptblock]$Command) {
   try { & $Command | Out-Host; return $LASTEXITCODE } finally { $ErrorActionPreference = $previous }
 }
 
+# Runs an installer attached directly to this console window and returns its exit code. Interactive
+# installers (claude.exe install, GSD's npx installer) can wait forever when their output goes into a
+# pipe, which is what Invoke-Native does. Reading .Handle before waiting works around PowerShell 5.1
+# returning an empty ExitCode for -NoNewWindow processes.
+function Invoke-InConsole([string]$FilePath, [string]$Arguments) {
+  $process = Start-Process -FilePath $FilePath -ArgumentList $Arguments -NoNewWindow -PassThru
+  $null = $process.Handle
+  $process.WaitForExit()
+  return $process.ExitCode
+}
+
 # Output lines of a native program (or none on failure); never throws.
 function Get-NativeOutput([scriptblock]$Command) {
   $previous = $ErrorActionPreference
@@ -280,7 +291,7 @@ if (Test-Command 'claude') {
   # Own PowerShell process: install.ps1 calls `exit 1` on failure, which would end THIS script if it
   # ran here through Invoke-Expression, and the fallbacks below would never be reached.
   Write-Host "    running Anthropic's installer (irm https://claude.ai/install.ps1 | iex) - no progress output, be patient"
-  $exitCode = Invoke-Native { & powershell.exe -NoProfile -ExecutionPolicy Bypass -Command "irm https://claude.ai/install.ps1 | iex" }
+  $exitCode = Invoke-InConsole 'powershell.exe' '-NoProfile -ExecutionPolicy Bypass -Command "irm https://claude.ai/install.ps1 | iex"'
   if ($exitCode -ne 0) { Write-Warn "Anthropic's installer exited with code $exitCode, trying the alternatives" }
   Update-SessionPath
   if (-not (Test-Command 'claude') -and (Test-Path (Join-Path $claudeBin 'claude.exe'))) { Add-ToUserPath $claudeBin }
@@ -329,7 +340,7 @@ elseif (Test-Path $otherGsd) {
 }
 elseif ($nodeMajor -lt 24) { Write-Skip "needs Node 24+ (see above)" }
 else {
-  $exitCode = Invoke-Native { & cmd.exe /c "npx -y --package=@opengsd/gsd-core@1.19.0 -- gsd-core --claude --global" }
+  $exitCode = Invoke-InConsole 'cmd.exe' '/c npx -y --package=@opengsd/gsd-core@1.19.0 -- gsd-core --claude --global'
   if ($exitCode -ne 0) {
     Write-Fail "GSD installer exited with code $exitCode."
     $notes.Add("GSD did not install. Double-click the installer again later, or ask Ido.")
