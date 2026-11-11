@@ -1,0 +1,5 @@
+# licensed / large brand binaries stay out of the public repo; Ido holds the originals
+*.zip
+assets-1/
+assets-2/
+*.pptx

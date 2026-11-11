@@ -1,0 +1,7 @@
+# Real — skills/wis-slides/SKILL.md, 2026-11-01
+description: Use when the user says
+  "Weizmann slides", "WIS template" […]
+deck/brand/WIS-extended-english-template.pptx
+points: a sequence of 2-4 steps, shown numbered
+Every title is an assertion a listener could repeat
+deck/qa/venv/bin/python -I deck/build.py […]

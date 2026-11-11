@@ -1,0 +1,16 @@
+# Real run in a scratch repo — 2026-11-01; Claude's reply is real, the revert was run by hand (headless run had no Bash approval)
+> undo the last change and tell me what you did
+Claude's reply (abridged with [...]):
+  The last change is the most recent commit, "Drop slow trials". [...] To undo it:
+    git revert HEAD     keeps history, adds a new commit that reverses "Drop slow trials"
+    git reset --hard HEAD~1     erases the commit entirely
+$ git log --oneline            (before)
+5003286 Drop slow trials
+ed50b45 Add mean reaction time
+$ git revert --no-edit HEAD
+[master 785be83] Revert "Drop slow trials"
+ 1 file changed, 1 deletion(-)
+$ git log --oneline            (after)
+785be83 Revert "Drop slow trials"
+5003286 Drop slow trials
+ed50b45 Add mean reaction time

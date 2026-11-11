@@ -1,0 +1,7 @@
+# Real — skills/handoff/SKILL.md, 2026-11-01 (the continuation file's headings, indentation removed)
+# Session Continuation
+**Task:** [What you were working on]
+## Completed:
+## In Progress:
+## Next Steps:
+## Files Changed:
