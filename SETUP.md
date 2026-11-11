@@ -25,7 +25,8 @@ and nervous about it. Your job is to set up their workspace AND teach the habits
 - Ask questions **one at a time**. Use the AskUserQuestion tool with options whenever answers are predictable;
   the person can always pick "Other" and type.
 - Before writing or changing ANY file that already exists, show the difference and ask: keep, replace or skip.
-  Never overwrite silently.
+  Never overwrite silently. This person may already use Claude: their existing skills, rules, hooks, plugins,
+  status line and CLAUDE.md always win; add next to them, never instead of them.
 - Use the Read, Write, Edit and Glob tools for file work, not shell copies, so it works on Windows and Mac.
 - `~` means the person's home folder (on Windows `C:\Users\<name>`). Claude's own settings live in `~/.claude/`.
 - If something fails, explain it in plain words, suggest a fix, and say: "If this keeps failing, send Ido a
@@ -39,12 +40,16 @@ first. When I ask, you can say yes, no, or tell me what to do instead. Esc stops
 
 Check, read-only, and report in a short table (OK / missing):
 - `claude --version`, `git --version`, `node --version` (Node must be 24 or newer).
-- GSD: the file `~/.claude/gsd-core/VERSION` exists (print the version).
-- The context bar: `~/.claude/settings.json` has a `statusLine` entry mentioning `gsd-statusline`.
+- GSD: `~/.claude/gsd-core/VERSION` exists (print the version). If instead `~/.claude/get-shit-done/` exists,
+  they already had GSD before the kit: that is fine, it is the same workflow; never install or update GSD here.
+- The context bar: `~/.claude/settings.json` has a `statusLine` entry. If it is GSD's (`gsd-statusline`), say so.
+  If it is something else, it is their own: keep it, and never replace it.
 - Windows only: `~/.claude/settings.json` has `env.CLAUDE_CODE_GIT_BASH_PATH`.
 
-If anything is missing: Windows → "close me, double-click `1-INSTALL-WINDOWS.cmd` again (it is safe to re-run),
-then come back." Mac → the three commands in README.md, "Install". Do not try to fix installs yourself.
+If anything is missing: Windows → "close me, double-click `1-INSTALL-WINDOWS.cmd` again (it is safe to re-run,
+and it never replaces anything you already have), then come back." If GSD is missing because their Node is older
+than 24, do not upgrade Node: say Ido will help with that one on one, and carry on without GSD.
+Mac → the three commands in README.md, "Install". Do not try to fix installs yourself.
 
 Then point at the bottom of the screen: "That line is your status bar. It shows the model, the folder, and how
 full my context (my working memory) is. Keep an eye on it - Step 10 explains why."
@@ -64,8 +69,8 @@ Show this table and ask if they want to look at anything before moving on:
 | `docs/GSD_GUIDE.md` | the GSD planning workflow from the talk (plan, then build, then verify) |
 | `deck/` | the slides from the talk, as text sources |
 
-Already installed by the installer: **GSD** (the `/gsd-...` commands), the **context bar**, and GSD's
-**context monitor** (it warns me when my memory is getting full).
+Already installed by the installer (unless they already had their own): **GSD** (the `/gsd-...` commands),
+the **context bar**, and GSD's **context monitor** (it warns me when my memory is getting full).
 
 ### Step 3 - Getting to know you (the questionnaire)
 
@@ -122,7 +127,9 @@ Teach: "CLAUDE.md asks me to behave; I can forget. A hook is a small command Cla
 every single time. It is how you make a rule certain."
 
 Offer these one at a time. For each: explain in one line, ask yes/no. Before the first change, copy
-`~/.claude/settings.json` to `~/.claude/settings.json.bak` and say where the backup is. Merge into the existing
+`~/.claude/settings.json` to `~/.claude/settings.json.bak-<YYYYMMDD-HHMM>` (a new name, so no earlier backup is
+overwritten) and say where the backup is. If the file does not parse as JSON, stop this step and say so; never
+rewrite a file you cannot read. Merge into the existing
 `hooks` object: keep every existing entry (GSD already has several), add only the new one, show the diff, write
 only after yes. After writing, Read the file back and check it is valid JSON.
 
